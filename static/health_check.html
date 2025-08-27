@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Health Check</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --background-color: #121212; --surface-color: #1e1e1e; --primary-color: #bb86fc;
+            --secondary-color: #03dac6; --text-color: #e0e0e0; --border-color: #333;
+            --error-color: #cf6679; --warning-color: #ffab00; 
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--background-color); color: var(--text-color); padding: 2rem; }
+        .container { max-width: 800px; margin: auto; }
+        header h1 { text-align: center; font-size: 2.5rem; margin-bottom: 1rem; color: var(--primary-color); }
+        header p { text-align: center; font-size: 1.1rem; color: #aaa; margin-bottom: 2rem; }
+        .card { background-color: var(--surface-color); border-radius: 12px; padding: 1.5rem 2rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); }
+        button { width: 100%; padding: 1rem; background-image: linear-gradient(90deg, var(--primary-color), var(--secondary-color)); color: var(--background-color); border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: transform 0.2s ease; }
+        button:hover { transform: translateY(-2px); }
+        .score-gauge { width: 180px; height: 180px; position: relative; margin: 1rem auto; }
+        .score-gauge__circle { width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(var(--primary-color) calc(var(--value) * 1%), var(--surface-color) 0); display: flex; justify-content: center; align-items: center; }
+        .score-gauge__inner { width: 85%; height: 85%; background: var(--surface-color); border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .score-gauge__value { font-size: 3rem; font-weight: 700; }
+        .details-grid { margin-top: 2rem; display: grid; gap: 1.5rem; }
+        .detail-item { background: #2c2c2c; padding: 1rem; border-radius: 8px; }
+        .detail-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .progress-bar { width: 100%; height: 8px; background: #444; border-radius: 4px; overflow: hidden; margin-bottom: 0.5rem; }
+        .progress-bar-fill { height: 100%; width: 0%; background-color: var(--secondary-color); transition: width 1s ease-in-out; }
+        .feedback-text { font-size: 0.9rem; color: #bbb; }
+        #loader { text-align: center; padding: 2rem; font-size: 1.2rem; }
+        .nav-link { display: block; text-align: center; margin-top: 2rem; color: var(--secondary-color); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Resume Health Check 🩺</h1>
+            <p>Get an instant quality score and actionable feedback based on best practices.</p>
+        </header>
+        <div class="card">
+            <form id="check-form">
+                <input type="file" id="resume-file" accept=".pdf,.docx,.png,.jpg,.jpeg"><br><br>
+                <button type="submit">Check My Resume Score</button>
+            </form>
+        </div>
+        <div id="loader" style="display: none;">Loading...</div>
+        <div id="results" class="card" style="display: none; margin-top: 2rem;">
+            <div class="score-gauge">
+                <div class="score-gauge__circle" style="--value: 0;"><div class="score-gauge__inner"><div id="total-score" class="score-gauge__value">0</div></div></div>
+            </div>
+            <div class="details-grid"></div>
+        </div>
+        <a href="/" class="nav-link">Back to ATS Match Scorer</a>
+    </div>
+
+    <script>
+        const form = document.getElementById('check-form');
+        const resultsDiv = document.getElementById('results');
+        const loader = document.getElementById('loader');
+
+        function displayResults(data) {
+            const totalScoreEl = document.querySelector('.score-gauge__value');
+            const scoreGaugeCircle = document.querySelector('.score-gauge__circle');
+            const detailsGrid = document.querySelector('.details-grid');
+            
+            totalScoreEl.textContent = `${data.total_score || 0}`;
+            scoreGaugeCircle.style.setProperty('--value', data.total_score || 0);
+            detailsGrid.innerHTML = '';
+
+            // --- THIS IS THE CORRECTED PART ---
+            // This map reflects the final scoring system, including Spelling.
+            const maxPointsMap = { 
+                impact_and_quantification: 25, 
+                action_verbs: 20, 
+                readability: 15, 
+                essential_sections: 10, 
+                clarity_and_brevity: 5,
+                contact_information: 10,
+                spelling: 15 // Final category added
+            };
+            
+            for (const key in data.details) {
+                if (data.details.hasOwnProperty(key)) {
+                    const value = data.details[key];
+                    const feedback = data.feedback[key];
+                    const maxPoints = maxPointsMap[key];
+                    const percentage = maxPoints > 0 ? (value / maxPoints) * 100 : 0;
+                    const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+                    const item = document.createElement('div');
+                    item.className = 'detail-item';
+                    item.innerHTML = `
+                        <div class="detail-item-header">
+                            <span>${formattedKey}</span>
+                            <strong>${value}/${maxPoints}</strong>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill" style="width: ${percentage}%;"></div>
+                        </div>
+                        <p class="feedback-text">${feedback}</p> 
+                    `;
+                    detailsGrid.appendChild(item);
+                }
+            }
+            resultsDiv.style.display = 'block';
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const resumeFile = document.getElementById('resume-file').files[0];
+            if (!resumeFile) { alert('Please upload a resume file.'); return; }
+            resultsDiv.style.display = 'none';
+            loader.style.display = 'block';
+            const formData = new FormData();
+            formData.append('resume_file', resumeFile);
+            try {
+                const response = await fetch('/check-resume/', { method: 'POST', body: formData });
+                if (!response.ok) throw new Error('Network response was not ok.');
+                const data = await response.json();
+                displayResults(data);
+            } catch (error) {
+                console.error('There was a problem:', error);
+                alert('An error occurred. Make sure the Python server is running.');
+            } finally {
+                loader.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
